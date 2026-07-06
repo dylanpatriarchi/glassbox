@@ -40,6 +40,10 @@ def generate(
 
     `generator` lets callers pass a seeded RNG for fully reproducible sampling.
     """
+    # Switch to eval (disables dropout) but remember the previous mode so we can
+    # restore it — otherwise sampling from inside a training loop would silently
+    # leave the model in eval and disable dropout for the rest of training.
+    was_training = model.training
     model.eval()
     block_size = model.cfg.block_size
 
@@ -77,4 +81,7 @@ def generate(
         # 6) APPEND and continue.
         idx = torch.cat((idx, next_id), dim=1)               # (B, T+1)
 
+    # Restore the caller's original train/eval mode.
+    if was_training:
+        model.train()
     return idx

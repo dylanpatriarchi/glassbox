@@ -61,6 +61,14 @@ class TextData:
         data = self.train_data if split == "train" else self.val_data
         # Highest valid start index so that a full block + its shifted target fit.
         high = len(data) - self.block_size - 1
+        # Guard: a corpus (or split) shorter than block_size+2 tokens leaves no
+        # room to sample a window, and torch.randint would raise a cryptic error.
+        # Fail loudly with an actionable message instead.
+        assert high > 0, (
+            f"'{split}' split has only {len(data)} tokens but block_size="
+            f"{self.block_size}; use a longer corpus or a smaller block_size "
+            f"(need > block_size + 1 tokens)."
+        )
         ix = torch.randint(high, (batch_size,), generator=generator)  # (B,)
 
         # Stack the sliced windows into a batch.
@@ -80,21 +88,31 @@ def sorted_copy_batch(
     batch_size: int, seq_len: int, n_symbols: int = 10,
     generator: torch.Generator | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """A batch for the 'sort these digits' task.
+    """A batch for the 'sort these digits' task, framed for a CAUSAL LM.
 
-    Input  x: a random sequence of `seq_len` digit ids, e.g. [3, 1, 2, 1].
-    Target y: at each position, the next token of the SORTED sequence, so that a
-              standard next-token language model learns to output the sorted
-              version. Concretely we model the joint sequence [input | sorted] and
-              y is that stream shifted by one; here we expose the simpler
-              "predict the sorted sequence" framing used by the overfit test:
+    A subtlety trips up the naive version: you cannot align a random sequence
+    `x[t]` with its sorted counterpart `sorted(x)[t]` position-by-position and
+    ask a causal model to map one to the other, because `sorted(x)[0]` is the
+    global minimum — it depends on the WHOLE input, which position 0 hasn't seen
+    yet. A causal model literally cannot solve that.
 
-                  x = random digits                      (B, L)
-                  y = the same digits, sorted ascending  (B, L)
+    The correct framing models the *concatenated* stream `[input | sorted]` and
+    trains standard next-token prediction on it. After the model has read all
+    `seq_len` input digits, it has enough information to emit the sorted run:
 
-    Because the answer is deterministic, a trained model reaching ~100% token
-    accuracy is unambiguous proof of learning.
+        full = [ d_0, d_1, ..., d_{L-1},   s_0, s_1, ..., s_{L-1} ]   # length 2L
+                └────── random ───────┘   └─── sorted(random) ───┘
+        x = full[:, :-1]     # (B, 2L-1)  inputs
+        y = full[:, 1:]      # (B, 2L-1)  next-token targets
+
+    Only the predictions over the second half (the sorted region) are actually
+    determined; a trained model reaching ~100% accuracy THERE is unambiguous
+    proof of learning. Because the answer is deterministic, this is an easy,
+    fast, self-checking task with no corpus download.
     """
-    x = torch.randint(0, n_symbols, (batch_size, seq_len), generator=generator)  # (B, L)
-    y, _ = torch.sort(x, dim=1)                                                   # (B, L)
+    rand = torch.randint(0, n_symbols, (batch_size, seq_len), generator=generator)  # (B, L)
+    srt, _ = torch.sort(rand, dim=1)                                                # (B, L)
+    full = torch.cat([rand, srt], dim=1)     # (B, 2L)  the joint [input | sorted] stream
+    x = full[:, :-1]                         # (B, 2L-1)
+    y = full[:, 1:]                          # (B, 2L-1)
     return x, y
