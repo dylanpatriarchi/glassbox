@@ -61,6 +61,10 @@ def train(model: GPT, data: TextData, cfg: TrainConfig
     """Train `model` on `data`. Returns a list of (iter, train_loss, val_loss)."""
     set_seed(cfg.seed)
     model.to(cfg.device)
+    # Keep the data on the SAME device as the model: get_batch() moves its
+    # tensors to data.device, so without this a model on cuda + data on cpu
+    # (independently configured) would crash with a device-mismatch error.
+    data.device = cfg.device
     model.train()
 
     # AdamW = Adam with decoupled weight decay. Weight decay is a mild pull of
