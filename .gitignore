@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Local agent / assistant context files (never push these) ---
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.cursorrules
+.claude/
+.aider*
+*.local.md
+
+# --- OS / editor cruft ---
+.DS_Store
+.idea/
+.vscode/
+
+# --- Data that can be re-downloaded (bundled sample corpus is committed) ---
+data/input.txt
+
+# NOTE: we deliberately DO commit assets/*.png (loss curve) and the bundled
+# data/tiny_shakespeare.txt so the README is reproducible out of the box.
