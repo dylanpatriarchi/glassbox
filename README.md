@@ -1,5 +1,8 @@
 # Glassbox 🔍
 
+[![CI](https://github.com/dylanpatriarchi/glassbox/actions/workflows/ci.yml/badge.svg)](https://github.com/dylanpatriarchi/glassbox/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **A decoder-only (GPT-style) transformer implemented from scratch in PyTorch — and heavily annotated so you can *fully understand* it.**
 
 Glassbox is not "a transformer that works." Lots of those exist. Glassbox is a
@@ -226,12 +229,27 @@ bundled Shakespeare excerpt for 3000 steps:
 ![training loss curve](assets/loss_curve.png)
 
 The training loss drops from **4.09 → 0.086** — the backward path clearly works and
-the model is learning. The validation loss *rises*, which is exactly what you should
-expect and is itself the lesson: the bundled corpus is only a few kilobytes, so a
+the model is learning. The validation loss *rises* (to ~5.2), which is exactly what
+you should expect and is itself the lesson: the bundled corpus is only ~6 KB, so a
 0.8M-param model quickly **memorises** it (classic overfitting — train ↓, val ↑).
-With a larger corpus the val curve would track the train curve; here the point is
-simply to show the machinery learns. Point a bigger `data/input.txt` at `TextData`
-to see honest generalisation.
+
+Is that really a data-size effect and not a broken model? I checked, by running the
+**same** config on the full ~1.1 MB tiny-Shakespeare corpus (~170× larger). There the
+validation loss **tracks** the training loss all the way down instead of diverging:
+
+| corpus | size | end train | end val | validation over training |
+|--------|------|-----------|---------|--------------------------|
+| bundled (this repo) | ~6 KB   | **0.086** | ~5.2  | ↑ diverges — the model memorised |
+| full tiny-Shakespeare | ~1.1 MB | 1.63    | 1.78  | ↓ 4.21 → 1.78 — tracks train (real generalisation) |
+
+So the machinery generalises once it has enough data; the tiny bundled corpus is
+chosen only to keep the demo fast and fully offline. To reproduce the second row,
+point `TextData` at any UTF-8 text file of your own — note the argument is an
+explicit `path`, the loader does **not** auto-discover an `input.txt`:
+
+```python
+data = TextData(path="path/to/your_corpus.txt", block_size=128)
+```
 
 **Before training** (untrained model — random characters, no structure):
 
