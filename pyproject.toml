@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "glassbox"
+version = "0.1.0"
+description = "A decoder-only (GPT-style) transformer implemented from scratch and heavily annotated — a transformer you can fully understand."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Dylan Patriarchi" }]
+keywords = ["transformer", "gpt", "attention", "education", "from-scratch", "pytorch"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Education",
+]
+
+# Deliberately tiny dependency set — no high-level model libraries.
+dependencies = [
+    "torch>=2.2",
+    "numpy>=1.26",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://github.com/dylanpatriarchi/glassbox"
+
+[tool.hatch.build.targets.wheel]
+packages = ["glassbox", "from_numpy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
